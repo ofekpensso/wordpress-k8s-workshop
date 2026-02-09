@@ -1,0 +1,20 @@
+# Kubernetes secrets - DO NOT COMMIT
+secrets/
+secrets.yaml
+secrets.yml
+*secrets.yaml
+*secrets.yml
+
+# AWS and local environment files
+.env
+.aws/
+credentials
+*.pem
+
+# IDE folders
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
