@@ -2,10 +2,9 @@
 
 # setup-secrets.sh
 # This script injects ALL necessary secrets into the cluster.
-# It handles both AWS credentials (for the bot) and Database passwords (for the app).
+# UPDATED: Now creates 'mysql-secrets' to match the WordPress deployment.
 
 echo "🚀 Starting Project Setup..."
-
 
 echo "1️⃣  Configuring AWS Credentials..."
 if ! aws sts get-caller-identity &> /dev/null; then
@@ -30,13 +29,13 @@ echo -n "Enter a secure password for WordPress database user: "
 read -s MYSQL_PASSWORD
 echo
 
-kubectl create secret generic mysql-pass \
-  --from-literal=password=$MYSQL_ROOT_PASSWORD \
-  --from-literal=mysql-root-password=$MYSQL_ROOT_PASSWORD \
-  --from-literal=mysql-password=$MYSQL_PASSWORD \
+kubectl create secret generic mysql-secrets \
+  --from-literal=MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
+  --from-literal=MYSQL_USER=wordpress \
+  --from-literal=MYSQL_PASSWORD=$MYSQL_PASSWORD \
+  --from-literal=MYSQL_DATABASE=wordpress \
   --namespace default \
   --dry-run=client -o yaml | kubectl apply -f -
 
-echo "✅ Secret 'mysql-pass' created."
-
-echo "🎉 All secrets configured successfully! You can now run 'kubectl apply'."
+echo "✅ Secret 'mysql-secrets' created successfully."
+echo "🎉 All secrets configured! You can now run 'kubectl apply'."
