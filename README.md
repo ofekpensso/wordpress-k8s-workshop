@@ -28,7 +28,6 @@ The infrastructure is designed to be resilient and observable:
 ```bash
 .
 ├── k8s-infrastructure/
-│   ├── secrets.yml             # Template for secrets (Actual secrets injected via script)
 │   └── ecr-renew-cron.yml      # CronJob for AWS ECR authentication
 ├── mysql/
 │   ├── mysql-pvc.yml           # Persistent Volume Claim
