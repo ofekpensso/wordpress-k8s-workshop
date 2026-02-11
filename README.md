@@ -14,12 +14,12 @@ A production-grade implementation of WordPress on Kubernetes, deployed on an AWS
 
 The infrastructure is designed to be resilient and observable:
 
-* **Ingress Controller (NGINX):** Routes external HTTP traffic to the internal services.
-* **WordPress Deployment:** Stateless application pods running in high availability (ReplicaSet).
-* **MySQL StatefulSet:** Database with **Persistent Volume Claim (PVC)** ensuring data survives pod restarts.
-* **Security Automation:** Custom bash script injects secrets directly into K8s memory (no plain-text secrets in Git).
-* **ECR Refresher Bot:** A CronJob that automatically renews the AWS ECR token every 6 hours.
-* **Monitoring Stack:** Prometheus & Grafana installed via Helm to monitor cluster health and pod uptime.
+- **Ingress Controller (NGINX):** Routes external HTTP traffic to the internal services.
+- **WordPress Deployment:** Stateless application pods running in high availability (ReplicaSet).
+- **MySQL StatefulSet:** Database with **Persistent Volume Claim (PVC)** ensuring data survives pod restarts.
+- **Security Automation:** Custom bash script injects secrets directly into K8s memory (no plain-text secrets in Git).
+- **ECR Refresher Bot:** A CronJob that automatically renews the AWS ECR token every 6 hours.
+- **Monitoring Stack:** Prometheus & Grafana installed via Helm to monitor cluster health and pod uptime.
 
 ---
 
@@ -41,89 +41,146 @@ The infrastructure is designed to be resilient and observable:
 ├── monitoring/                 # Monitoring configurations
 ├── setup-secrets.sh            # 🔐 Security Script (Injects secrets safely)
 └── README.md
-🛠️ Prerequisites
-Infrastructure: AWS EC2 Instance (t3.medium or larger recommended).
+```
 
-Tools: docker, minikube, kubectl, helm.
+---
 
-Cloud: AWS Account with ECR repository created.
+## 🛠️ Prerequisites
 
-🚀 Deployment Guide (How to Run)
+**Infrastructure:**  
+AWS EC2 Instance (t3.medium or larger recommended).
+
+**Tools:**  
+- docker  
+- minikube  
+- kubectl  
+- helm  
+
+**Cloud:**  
+AWS Account with ECR repository created.
+
+---
+
+## 🚀 Deployment Guide (How to Run)
+
 Follow these steps to deploy the application from scratch.
 
-1. Initialize Cluster
+### 1️⃣ Initialize Cluster
 
 Start Minikube with the Docker driver and enable the Ingress addon (Critical for routing).
 
-Bash
+```bash
 minikube start --driver=docker
 minikube addons enable ingress
-2. Secure Secret Injection
+```
 
-Instead of applying a YAML file with passwords, run the injection script.
-Note: This script prompts for credentials and creates K8s Secrets directly.
+---
 
-Bash
+### 2️⃣ Secure Secret Injection
+
+Instead of applying a YAML file with passwords, run the injection script.  
+This script prompts for credentials and creates K8s Secrets directly.
+
+```bash
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
-3. Monitoring Stack (Helm)
+```
+
+---
+
+### 3️⃣ Monitoring Stack (Helm)
 
 Install Prometheus and Grafana for observability.
 
-Bash
-helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 helm install monitoring prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
-4. Deploy Database Layer
+```
 
-We deploy the database first to ensure the PVC is bound.
+---
 
-Bash
+### 4️⃣ Deploy Database Layer
+
+Deploy the database first to ensure the PVC is bound.
+
+```bash
 kubectl apply -f mysql/mysql-pvc.yml
 kubectl apply -f mysql/mysql-service.yml
 kubectl apply -f mysql/mariadb-statefulset.yml
-5. Deploy ECR Authentication Bot
+```
 
-Deploys a CronJob to handle private registry pulls from AWS.
+---
 
-Bash
+### 5️⃣ Deploy ECR Authentication Bot
+
+Deploy a CronJob to handle private registry pulls from AWS.
+
+```bash
 kubectl apply -f k8s-infrastructure/ecr-renew-cron.yml
+
 # Trigger manually for the first pull:
 kubectl create job --from=cronjob/ecr-renew-cron init-ecr-login
-6. Deploy Application Layer
+```
 
-Bash
+---
+
+### 6️⃣ Deploy Application Layer
+
+```bash
 kubectl apply -f wordpress/wordpress-deployment.yml
 kubectl apply -f wordpress/wordpress-service.yml
 kubectl apply -f wordpress/wordpress-ingress.yml
-7. Access the Application
+```
+
+---
+
+### 7️⃣ Access the Application
 
 Forward the port to access the Ingress Controller from your local machine.
 
-Bash
+```bash
 # Terminal 1: Application Access
 sudo kubectl port-forward --address 0.0.0.0 -n ingress-nginx service/ingress-nginx-controller 80:80
 
 # Terminal 2: Grafana Dashboard Access (Default user: admin)
 kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80 --address 0.0.0.0
-WordPress: http://<EC2-Public-IP> (Ensure hosts file maps ofek-wordpress.local)
+```
 
-Grafana: http://<EC2-Public-IP>:3000
+**WordPress:**  
+```
+http://<EC2-Public-IP>
+```
+(Ensure your hosts file maps `ofek-wordpress.local` if needed.)
 
-🧪 Chaos Testing & Resilience
+**Grafana:**  
+```
+http://<EC2-Public-IP>:3000
+```
+
+---
+
+## 🧪 Chaos Testing & Resilience
+
 This project was tested for resilience:
 
-Persistence Test: Created a post -> Deleted MySQL Pod -> Verified post still exists after pod recovery (PVC Success).
+- **Persistence Test:**  
+  Created a post → Deleted MySQL Pod → Verified post still exists after pod recovery (PVC Success).
 
-Self-Healing Test: Deleted WordPress pods -> Kubernetes automatically recreated them (ReplicaSet Success).
+- **Self-Healing Test:**  
+  Deleted WordPress pods → Kubernetes automatically recreated them (ReplicaSet Success).
 
-Rolling Updates: Verified zero-downtime updates when changing image tags.
+- **Rolling Updates:**  
+  Verified zero-downtime updates when changing image tags.
 
-🔮 Future Improvements
-[ ] Convert all manifests into a unified Helm Chart.
+---
 
-[ ] Implement GitOps with ArgoCD.
+## 🔮 Future Improvements
 
-[ ] Add HPA (Horizontal Pod Autoscaler) based on CPU usage.
+- [ ] Convert all manifests into a unified Helm Chart.  
+- [ ] Implement GitOps with ArgoCD.  
+- [ ] Add HPA (Horizontal Pod Autoscaler) based on CPU usage.  
 
-Created by Ofek Penso | DevOps Portfolio Project 2026
+---
+
+Created by **Ofek Penso** | DevOps Portfolio Project 2026
