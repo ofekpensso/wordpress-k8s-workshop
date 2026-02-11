@@ -1,0 +1,73 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecr-renew-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ecr-renew-role
+  namespace: default
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ecr-renew-role-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: ecr-renew-sa
+roleRef:
+  kind: Role
+  name: ecr-renew-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-renew-cron
+  namespace: default
+spec:
+  schedule: "0 */8 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: ecr-renew-sa
+          containers:
+          - name: ecr-renew-helper
+            image: amazon/aws-cli:latest
+            envFrom:
+              - secretRef:
+                  name: aws-creds
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e 
+              
+              echo "Starting ECR renewal process..."
+              cd /tmp
+              
+              echo "Downloading kubectl..."
+              curl -sLO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+              chmod +x ./kubectl
+              
+              echo "Getting login token from AWS..."
+              TOKEN=$(aws ecr get-login-password --region $AWS_DEFAULT_REGION)
+              
+              echo "Updating Kubernetes secret..."
+              ./kubectl delete secret ecr-registry-helper --ignore-not-found
+              ./kubectl create secret docker-registry ecr-registry-helper \
+                --docker-server=992382545251.dkr.ecr.us-east-1.amazonaws.com \
+                --docker-username=AWS \
+                --docker-password="${TOKEN}"
+              
+              echo "SUCCESS: Secret updated successfully at $(date)"
+          restartPolicy: OnFailure
