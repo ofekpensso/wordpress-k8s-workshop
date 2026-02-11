@@ -1,234 +1,129 @@
-# Kubernetes WordPress Project 🚀
+# 🚀 High-Availability WordPress on Kubernetes (Minikube & AWS)
 
-A robust, production-like WordPress deployment on Kubernetes (Minikube/AWS). This project demonstrates a full GitOps workflow including persistent storage, ingress networking, monitoring stack (Prometheus & Grafana), and automated secret management for AWS ECR.
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
+![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)
 
----
-
-## 🏗 Architecture
-
-The project consists of the following components:
-
-- **Application:** WordPress (Deployment with 2 replicas for high availability).
-- **Database:** MariaDB/MySQL (StatefulSet with Persistent Volume Claim).
-- **Networking:** NGINX Ingress Controller exposing the app via a custom domain.
-- **Monitoring:** Full kube-prometheus-stack (Prometheus, Grafana, AlertManager).
-- **Automation:** A CronJob that automatically renews AWS ECR authorization tokens every 8 hours.
+A production-grade implementation of WordPress on Kubernetes, deployed on an AWS EC2 instance using Minikube. This project demonstrates advanced DevOps practices including **Self-Healing**, **Secret Management**, **Persistent Storage**, **Automated ECR Authentication**, and **Full-Stack Monitoring**.
 
 ---
 
-## 🛠 Prerequisites
+## 🏗 Architecture Overview
 
-Before you begin, ensure you have the following installed:
+The infrastructure is designed to be resilient and observable:
 
-- **AWS CLI** (Configured with `aws configure`)
-- **Minikube** (Running on Docker driver)
-- **Kubectl**
-- **Helm** (For monitoring stack)
-
----
-
-## 🚀 Getting Started
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/your-username/wordpress-k8s-workshop.git
-cd wordpress-k8s-workshop
-```
-
----
-
-### 2️⃣ Setup Secrets (Important!)
-
-For security reasons, secrets are not committed to the repository.
-
-Run the provided setup script to inject your local AWS credentials into the cluster securely:
-
-```bash
-chmod +x setup-secrets.sh
-./setup-secrets.sh
-```
-
-This script creates the `aws-creds` secret required by the automation bot.
-
----
-
-### 3️⃣ Deploy the Infrastructure
-
-#### Step A: Database (MySQL)
-
-Deploy the StatefulSet and Service for the database first to ensure persistence.
-
-```bash
-kubectl apply -f mysql/mysql-pvc.yml
-kubectl apply -f mysql/mysql-service.yml
-kubectl apply -f mysql/mariadb-statefulset.yml
-```
-
----
-
-#### Step B: Application (WordPress)
-
-Deploy the WordPress app and the CronJob for ECR authentication.
-
-```bash
-kubectl apply -f k8s-infrastructure/ecr-renew-cron.yml
-
-# Ideally, run the job once manually to ensure the image pull secret exists immediately:
-kubectl create job --from=cronjob/ecr-renew-cron init-ecr-secret
-
-kubectl apply -f wordpress/wordpress-deployment.yml
-kubectl apply -f wordpress/wordpress-service.yml
-```
-
----
-
-#### Step C: Networking (Ingress)
-
-Deploy the Ingress rule to route traffic.
-
-```bash
-kubectl apply -f wordpress/wordpress-ingress.yml
-```
-
----
-
-## 🌐 Accessing the Application
-
-Since this runs on Minikube (likely on a remote EC2), you need to tunnel the traffic.
-
-### On the Server
-
-Keep the port-forward running for the Ingress Controller:
-
-```bash
-sudo kubectl port-forward --address 0.0.0.0 -n ingress-nginx service/ingress-nginx-controller 80:80
-```
-
-### On Your Local Machine
-
-Update your `/etc/hosts` file to point to the server IP:
-
-```
-<YOUR_EC2_PUBLIC_IP>  ofek-wordpress.local
-```
-
-Then browse to:
-
-```
-http://ofek-wordpress.local
-```
-
----
-
-## 📊 Monitoring (Prometheus & Grafana)
-
-This project uses the kube-prometheus-stack for observability.
-
-### Installation
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install monitoring prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
-```
-
----
-
-### Accessing Grafana
-
-#### Get Admin Password
-
-```bash
-kubectl get secret --namespace monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
-```
-
-#### Port Forward
-
-```bash
-sudo kubectl port-forward --address 0.0.0.0 -n monitoring service/monitoring-grafana 3000:80
-```
-
-Login at:
-
-```
-http://<YOUR_EC2_IP>:3000
-```
-
-- **User:** admin  
-- **Password:** (retrieved from command above)
-
-Navigate to:
-
-```
-Dashboards → New → Import
-```
-
-Or use the pre-built Kubernetes dashboards to view Pod Uptime and resource usage.
-
----
-
-## 🤖 Automation (How the CronJob Works)
-
-AWS ECR tokens expire every 12 hours.  
-To prevent `ImagePullBackOff` errors, a Kubernetes CronJob runs every 8 hours:
-
-1. Uses the injected `aws-creds`.
-2. Authenticates against AWS ECR.
-3. Updates the `ecr-registry-helper` secret in the cluster.
-
-This ensures the WordPress deployment can always pull new images.
+* **Ingress Controller (NGINX):** Routes external HTTP traffic to the internal services.
+* **WordPress Deployment:** Stateless application pods running in high availability (ReplicaSet).
+* **MySQL StatefulSet:** Database with **Persistent Volume Claim (PVC)** ensuring data survives pod restarts.
+* **Security Automation:** Custom bash script injects secrets directly into K8s memory (no plain-text secrets in Git).
+* **ECR Refresher Bot:** A CronJob that automatically renews the AWS ECR token every 6 hours.
+* **Monitoring Stack:** Prometheus & Grafana installed via Helm to monitor cluster health and pod uptime.
 
 ---
 
 ## 📂 Project Structure
 
-```
-.
-├── k8s-infrastructure/     # Automation & Maintenance configs
-│   └── ecr-renew-cron.yml  # The bot that renews ECR tokens
-├── mysql/                  # Database configuration
-│   ├── mariadb-statefulset.yml
-│   ├── mysql-pvc.yml
-│   └── mysql-service.yml
-├── wordpress/              # Application configuration
-│   ├── wordpress-deployment.yml
-│   ├── wordpress-ingress.yml
-│   └── wordpress-service.yml
-├── setup-secrets.sh        # Local script to inject AWS credentials
-└── README.md               # Project documentation
-```
-
----
-
-## ⚠️ Important: setup-secrets.sh File
-
-Make sure this file exists in your project root directory.
-
 ```bash
-#!/bin/bash
+.
+├── k8s-infrastructure/
+│   ├── secrets.yml             # Template for secrets (Actual secrets injected via script)
+│   └── ecr-renew-cron.yml      # CronJob for AWS ECR authentication
+├── mysql/
+│   ├── mysql-pvc.yml           # Persistent Volume Claim
+│   ├── mysql-service.yml       # Headless Service for Stable Network ID
+│   └── mariadb-statefulset.yml # StatefulSet configuration
+├── wordpress/
+│   ├── wordpress-deployment.yml
+│   ├── wordpress-service.yml
+│   └── wordpress-ingress.yml
+├── monitoring/                 # Monitoring configurations
+├── setup-secrets.sh            # 🔐 Security Script (Injects secrets safely)
+└── README.md
+🛠️ Prerequisites
+Infrastructure: AWS EC2 Instance (t3.medium or larger recommended).
 
-# setup-secrets.sh
-# This script injects local AWS credentials into the Kubernetes cluster
-# strictly for the use of the ECR renewal CronJob.
+Tools: docker, minikube, kubectl, helm.
 
-echo "Creating AWS credentials secret..."
+Cloud: AWS Account with ECR repository created.
 
-# Verify AWS CLI connection
-if ! aws sts get-caller-identity &> /dev/null; then
-    echo "Error: AWS CLI is not configured. Please run 'aws configure' first."
-    exit 1
-fi
+🚀 Deployment Guide (How to Run)
+Follow these steps to deploy the application from scratch.
 
-# Create the secret from current environment configuration
-kubectl create secret generic aws-creds \
-  --from-literal=AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id) \
-  --from-literal=AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key) \
-  --from-literal=AWS_DEFAULT_REGION=$(aws configure get region) \
-  --namespace default \
-  --dry-run=client -o yaml | kubectl apply -f -
+1. Initialize Cluster
 
-echo "Secret 'aws-creds' created successfully! You can now deploy the CronJob."
-```
+Start Minikube with the Docker driver and enable the Ingress addon (Critical for routing).
 
+Bash
+minikube start --driver=docker
+minikube addons enable ingress
+2. Secure Secret Injection
 
+Instead of applying a YAML file with passwords, run the injection script.
+Note: This script prompts for credentials and creates K8s Secrets directly.
+
+Bash
+chmod +x setup-secrets.sh
+./setup-secrets.sh
+3. Monitoring Stack (Helm)
+
+Install Prometheus and Grafana for observability.
+
+Bash
+helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
+helm repo update
+helm install monitoring prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+4. Deploy Database Layer
+
+We deploy the database first to ensure the PVC is bound.
+
+Bash
+kubectl apply -f mysql/mysql-pvc.yml
+kubectl apply -f mysql/mysql-service.yml
+kubectl apply -f mysql/mariadb-statefulset.yml
+5. Deploy ECR Authentication Bot
+
+Deploys a CronJob to handle private registry pulls from AWS.
+
+Bash
+kubectl apply -f k8s-infrastructure/ecr-renew-cron.yml
+# Trigger manually for the first pull:
+kubectl create job --from=cronjob/ecr-renew-cron init-ecr-login
+6. Deploy Application Layer
+
+Bash
+kubectl apply -f wordpress/wordpress-deployment.yml
+kubectl apply -f wordpress/wordpress-service.yml
+kubectl apply -f wordpress/wordpress-ingress.yml
+7. Access the Application
+
+Forward the port to access the Ingress Controller from your local machine.
+
+Bash
+# Terminal 1: Application Access
+sudo kubectl port-forward --address 0.0.0.0 -n ingress-nginx service/ingress-nginx-controller 80:80
+
+# Terminal 2: Grafana Dashboard Access (Default user: admin)
+kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80 --address 0.0.0.0
+WordPress: http://<EC2-Public-IP> (Ensure hosts file maps ofek-wordpress.local)
+
+Grafana: http://<EC2-Public-IP>:3000
+
+🧪 Chaos Testing & Resilience
+This project was tested for resilience:
+
+Persistence Test: Created a post -> Deleted MySQL Pod -> Verified post still exists after pod recovery (PVC Success).
+
+Self-Healing Test: Deleted WordPress pods -> Kubernetes automatically recreated them (ReplicaSet Success).
+
+Rolling Updates: Verified zero-downtime updates when changing image tags.
+
+🔮 Future Improvements
+[ ] Convert all manifests into a unified Helm Chart.
+
+[ ] Implement GitOps with ArgoCD.
+
+[ ] Add HPA (Horizontal Pod Autoscaler) based on CPU usage.
+
+Created by Ofek Penso | DevOps Portfolio Project 2026
