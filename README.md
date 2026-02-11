@@ -135,30 +135,49 @@ kubectl apply -f wordpress/wordpress-ingress.yml
 
 ---
 
-### 7️⃣ Access the Application
+## 7️⃣ Access the Application
 
-Forward the port to access the Ingress Controller from your local machine.
+To access the services from outside the EC2 instance, run the following commands in **separate terminals**:
+
+---
+
+### 🖥 Terminal 1: WordPress Access
+
+> Port 80 requires `sudo` + explicit kubeconfig path
 
 ```bash
-# Terminal 1: Application Access
-sudo kubectl port-forward --address 0.0.0.0 -n ingress-nginx service/ingress-nginx-controller 80:80
-
-# Terminal 2: Grafana Dashboard Access (Default user: admin)
-kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80 --address 0.0.0.0
+sudo kubectl --kubeconfig /home/ubuntu/.kube/config \
+port-forward --address 0.0.0.0 \
+-n ingress-nginx service/ingress-nginx-controller 80:80
 ```
 
-**WordPress:**  
+Access WordPress via:
+
 ```
 http://<EC2-Public-IP>
 ```
-(Ensure your hosts file maps `ofek-wordpress.local` if needed.)
 
-**Grafana:**  
+---
+
+### 📊 Terminal 2: Grafana Access (Port 3000)
+
+```bash
+kubectl --kubeconfig /home/ubuntu/.kube/config \
+port-forward -n monitoring \
+svc/monitoring-grafana 3000:80 \
+--address 0.0.0.0
+```
+
+Access Grafana via:
+
 ```
 http://<EC2-Public-IP>:3000
 ```
 
+(Default credentials: `admin`)
+
 ---
+
 
 ## 🧪 Chaos Testing & Resilience
 
