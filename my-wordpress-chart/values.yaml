@@ -1,0 +1,14 @@
+replicaCount: 2
+
+image:
+  repository: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ofekpenso-wordpress
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  host: ofek-wordpress.local
