@@ -1,4 +1,4 @@
-# 🚀 High-Availability WordPress on Kubernetes (Minikube & AWS)
+# 🚀 WordPress High-Availability on Kubernetes (Helm Edition)
 
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
@@ -6,199 +6,239 @@
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)
 
-A production-grade implementation of WordPress on Kubernetes, deployed on an AWS EC2 instance using Minikube. This project demonstrates advanced DevOps practices including **Self-Healing**, **Secret Management**, **Persistent Storage**, **Automated ECR Authentication**, and **Full-Stack Monitoring**.
+This project demonstrates a **production-grade WordPress deployment** on a Kubernetes cluster (Minikube running on AWS EC2).
+
+It includes:
+
+- ✅ Private AWS ECR integration  
+- ✅ Automated image pull secret rotation  
+- ✅ Stateful database deployment  
+- ✅ Persistent storage  
+- ✅ Full monitoring stack (Prometheus + Grafana)  
+- ✅ Helm-based package management  
+
+This setup simulates a real-world DevOps production environment.
 
 ---
 
-## 🏗 Architecture Overview
+# 🏗️ Architecture Overview
 
-The infrastructure is designed to be resilient and observable:
+## 🔹 Helm Chart
+The entire stack is packaged and managed via a **custom Helm chart**, allowing reproducible, versioned deployments.
 
-- **Ingress Controller (NGINX):** Routes external HTTP traffic to the internal services.
-- **WordPress Deployment:** Stateless application pods running in high availability (ReplicaSet).
-- **MySQL StatefulSet:** Database with **Persistent Volume Claim (PVC)** ensuring data survives pod restarts.
-- **Security Automation:** Custom bash script injects secrets directly into K8s memory (no plain-text secrets in Git).
-- **ECR Refresher Bot:** A CronJob that automatically renews the AWS ECR token every 6 hours.
-- **Monitoring Stack:** Prometheus & Grafana installed via Helm to monitor cluster health and pod uptime.
+## 🔹 WordPress (Frontend)
+- Deployed as a **scalable Deployment**
+- Exposed via **Nginx Ingress Controller**
+- Pulls images from **private AWS ECR**
+
+## 🔹 MariaDB (Backend)
+- Deployed as a **StatefulSet**
+- Ensures stable network identity and persistent storage
+- Designed for data consistency and reliability
+
+## 🔹 Storage
+- Uses **Persistent Volume Claims (PVCs)**
+- Ensures WordPress and MariaDB data persist across pod restarts
+
+## 🔹 Private Registry (AWS ECR)
+- Images are stored in a private ECR repository
+- Kubernetes authenticates using an imagePullSecret
+- A **CronJob renews the ECR token every 8 hours**
+- Manual bootstrap job available for immediate initialization
+
+## 🔹 Monitoring Stack
+Powered by:
+
+- **kube-prometheus-stack**
+- **Prometheus**
+- **Grafana**
+- Custom dashboard for:
+  - Pod health
+  - Resource usage
+  - Cluster metrics
 
 ---
 
-## 📂 Project Structure
+# 🛠️ Prerequisites
+
+Before you begin, ensure the following tools are installed:
+
+- **Minikube**
+- **Kubectl**
+- **Helm v3+**
+- **AWS CLI** (configured with proper IAM permissions)
+- EC2 instance with sufficient resources
+
+---
+
+# 🚀 Quick Start (Zero → Production)
+
+## 1️⃣ Clone Repository & Setup Secrets
+
+Secrets are NOT stored in Git for security reasons.
+
+Clone the repository:
 
 ```bash
-.
-├── k8s-infrastructure/
-│   └── ecr-renew-cron.yml      # CronJob for AWS ECR authentication
-├── mysql/
-│   ├── mysql-pvc.yml           # Persistent Volume Claim
-│   ├── mysql-service.yml       # Headless Service for Stable Network ID
-│   └── mariadb-statefulset.yml # StatefulSet configuration
-├── wordpress/
-│   ├── wordpress-deployment.yml
-│   ├── wordpress-service.yml
-│   └── wordpress-ingress.yml
-├── monitoring/                 # Monitoring configurations
-├── setup-secrets.sh            # 🔐 Security Script (Injects secrets safely)
-└── README.md
+git clone https://github.com/ofekpenso/wordpress-k8s-workshop.git
+cd wordpress-k8s-workshop
 ```
 
----
-
-## 🛠️ Prerequisites
-
-**Infrastructure:**  
-AWS EC2 Instance (t3.medium or larger recommended).
-
-**Tools:**  
-- docker  
-- minikube  
-- kubectl  
-- helm  
-
-**Cloud:**  
-AWS Account with ECR repository created.
-
----
-
-## 🚀 Deployment Guide (How to Run)
-
-Follow these steps to deploy the application from scratch.
-
-### 1️⃣ Initialize Cluster
-
-Start Minikube with the Docker driver and enable the Ingress addon (Critical for routing).
-
-```bash
-minikube start --driver=docker
-minikube addons enable ingress
-```
-
----
-
-### 2️⃣ Secure Secret Injection
-
-Instead of applying a YAML file with passwords, run the injection script.  
-This script prompts for credentials and creates K8s Secrets directly.
+Make the setup script executable and run it:
 
 ```bash
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
 ```
 
+This script:
+
+- Creates Kubernetes secrets
+- Configures AWS credentials
+- Generates database passwords
+- Creates imagePullSecret for ECR
+
 ---
 
-### 3️⃣ Monitoring Stack (Helm)
+## 2️⃣ Deploy the Stack with Helm
 
-Install Prometheus and Grafana for observability.
+Install the entire infrastructure:
 
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install monitoring prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+helm install my-blog ./my-wordpress-chart
 ```
 
----
-
-### 4️⃣ Deploy Database Layer
-
-Deploy the database first to ensure the PVC is bound.
+Verify pods:
 
 ```bash
-kubectl apply -f mysql/mysql-pvc.yml
-kubectl apply -f mysql/mysql-service.yml
-kubectl apply -f mysql/mariadb-statefulset.yml
+kubectl get pods
 ```
 
 ---
 
-### 5️⃣ Deploy ECR Authentication Bot
+## 3️⃣ Initialize ECR Token (First Time Only)
 
-Deploy a CronJob to handle private registry pulls from AWS.
+Because the cluster needs immediate access to private ECR images, manually trigger the first job:
 
 ```bash
-kubectl apply -f k8s-infrastructure/ecr-renew-cron.yml
-
-# Trigger manually for the first pull:
-kubectl create job --from=cronjob/ecr-renew-cron init-ecr-login
+kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
 ```
+
+After that, the CronJob automatically renews the token every 8 hours.
 
 ---
 
-### 6️⃣ Deploy Application Layer
+## 4️⃣ Access the Application
+
+### Update your local `/etc/hosts`
+
+Add:
+
+```
+<YOUR_SERVER_IP>  ofek-wordpress.local
+```
+
+### Run Port Forward (Ingress)
 
 ```bash
-kubectl apply -f wordpress/wordpress-deployment.yml
-kubectl apply -f wordpress/wordpress-service.yml
-kubectl apply -f wordpress/wordpress-ingress.yml
+sudo kubectl port-forward \
+  --address 0.0.0.0 \
+  -n ingress-nginx \
+  service/ingress-nginx-controller 80:80
 ```
 
----
+Then open:
 
-## 7️⃣ Access the Application
-
-To access the services from outside the EC2 instance, run the following commands in **separate terminals**:
+👉 **http://ofek-wordpress.local**
 
 ---
 
-### 🖥 Terminal 1: WordPress Access
+# 📊 Monitoring
 
-> Port 80 requires `sudo` + explicit kubeconfig path
+The monitoring stack uses **kube-prometheus-stack**.
+
+## Install Monitoring (if not already installed)
 
 ```bash
-sudo kubectl --kubeconfig /home/ubuntu/.kube/config \
-port-forward --address 0.0.0.0 \
--n ingress-nginx service/ingress-nginx-controller 80:80
+helm install monitoring prometheus-community/kube-prometheus-stack
 ```
 
-Access WordPress via:
-
-```
-http://<EC2-Public-IP>
-```
-
----
-
-### 📊 Terminal 2: Grafana Access (Port 3000)
+## Access Grafana
 
 ```bash
-kubectl --kubeconfig /home/ubuntu/.kube/config \
-port-forward -n monitoring \
-svc/monitoring-grafana 3000:80 \
---address 0.0.0.0
+kubectl port-forward service/grafana 3000:80
 ```
 
-Access Grafana via:
+Then visit:
 
-```
-http://<EC2-Public-IP>:3000
-```
+👉 http://localhost:3000
 
-(Default credentials: `admin`)
+(Default credentials usually: `admin / prom-operator` unless overridden)
 
 ---
 
+## Import Custom Dashboard
 
-## 🧪 Chaos Testing & Resilience
+1. Go to Grafana → Dashboards → Import  
+2. Upload file:
 
-This project was tested for resilience:
+```
+/monitoring/custom-dashboard.json
+```
 
-- **Persistence Test:**  
-  Created a post → Deleted MySQL Pod → Verified post still exists after pod recovery (PVC Success).
+This dashboard provides:
 
-- **Self-Healing Test:**  
-  Deleted WordPress pods → Kubernetes automatically recreated them (ReplicaSet Success).
-
-- **Rolling Updates:**  
-  Verified zero-downtime updates when changing image tags.
-
----
-
-## 🔮 Future Improvements
-
-- [ ] Convert all manifests into a unified Helm Chart.  
-- [ ] Implement GitOps with ArgoCD.  
-- [ ] Add HPA (Horizontal Pod Autoscaler) based on CPU usage.  
+- Pod health metrics  
+- CPU & Memory usage  
+- WordPress performance visibility  
+- Cluster resource overview  
 
 ---
 
-Created by **Ofek Penso** | DevOps Portfolio Project 2026
+# 📂 Project Structure
+
+```
+wordpress-k8s-workshop/
+│
+├── my-wordpress-chart/        # Main Helm chart (templates + values)
+│
+├── legacy-manifests/          # Raw YAML files used during development
+│
+├── monitoring/
+│   └── custom-dashboard.json  # Grafana dashboard configuration
+│
+├── setup-secrets.sh           # Secret automation script
+│
+└── README.md
+```
+
+---
+
+# 🔐 Security Considerations
+
+- ❌ Secrets are not committed to Git  
+- ✅ ECR token auto-rotation  
+- ✅ Private image registry  
+- ✅ Persistent storage isolation  
+- ✅ Namespace separation (recommended)
+
+---
+
+# 🎯 What This Project Demonstrates
+
+- Production-style Kubernetes architecture  
+- Helm packaging best practices  
+- Secure AWS ECR integration  
+- CronJob-based token automation  
+- Stateful workloads  
+- Observability & monitoring  
+- Clean project structure for real DevOps workflows  
+
+---
+
+# 👨‍💻 Author
+
+**Ofek Penso**
+
+DevOps / Cloud / Kubernetes Project  
+Built as a production-style hands-on infrastructure deployment.
