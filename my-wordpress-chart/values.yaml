@@ -1,15 +1,38 @@
+# Replica counts for scalability
 replicaCount: 2
 
+# Image configurations
 image:
-  repository: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ofekpenso-wordpress
-  tag: latest
-  pullPolicy: IfNotPresent
+  wordpress:
+    repository: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ofekpenso-wordpress
+    tag: latest
+    pullPolicy: IfNotPresent
+  mysql:
+    repository: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ofekpenso-mariadb
+    tag: 10.6.4-focal
 
+# Resource limits (Essential for production)
+resources:
+  wordpress:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Service configuration
 service:
   type: NodePort
   port: 80
   nodePort: 30000
 
+# Storage configuration
+persistence:
+  mysql:
+    size: 1Gi
+
+# Ingress configuration
 ingress:
   enabled: true
   host: ofek-wordpress.local

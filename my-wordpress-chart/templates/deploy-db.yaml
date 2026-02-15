@@ -16,7 +16,6 @@ spec:
 ---
 # MySQL Service Configuration
 apiVersion: v1
-kind: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pv-claim
@@ -48,7 +47,7 @@ spec:
         - name: ecr-registry-helper
       containers:
       - name: mysql
-        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ofekpenso-mariadb:10.6.4-focal
+        image: {{ .Values.image.mysql.repository }}:{{ .Values.image.mysql.tag }}
         ports:
         - containerPort: 3306
           name: mysql
