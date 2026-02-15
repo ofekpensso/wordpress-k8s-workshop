@@ -286,16 +286,6 @@ wordpress-k8s-workshop/
 
 ---
 
-# 📈 Future Improvements
-
-- Horizontal Pod Autoscaler (HPA)
-- HTTPS with Cert-Manager
-- CI/CD pipeline (GitHub Actions)
-- Terraform-based infrastructure provisioning
-- External DNS automation
-
----
-
 # 👨‍💻 Author
 
 **Ofek Penso**  
