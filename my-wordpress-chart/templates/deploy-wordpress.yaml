@@ -6,7 +6,7 @@ metadata:
   labels:
     app: wordpress
 spec:
-  replicas: {{ .Values.replicaCount }} # Defined in values.yaml
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: wordpress
@@ -19,10 +19,12 @@ spec:
         - name: ecr-registry-helper
       containers:
       - name: wordpress
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.wordpress.repository }}:{{ .Values.image.wordpress.tag }}
         ports:
         - containerPort: 80
           name: wordpress
+        resources:
+          {{- toYaml .Values.resources.wordpress | nindent 10 }}
         env:
         - name: WORDPRESS_DB_HOST
           value: "mysql"
