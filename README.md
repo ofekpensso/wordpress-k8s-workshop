@@ -154,7 +154,7 @@ Credentials:
 
 ```
 User: admin
-Password: prom-operator
+Password: kubectl get secret --namespace monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 ```
 
 ### Import Dashboard:
