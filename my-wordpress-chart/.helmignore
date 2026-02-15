@@ -1,0 +1,26 @@
+x# .helmignore
+# Patterns to ignore when packaging or installing Helm charts.
+
+# Ignore Git files
+.git/
+.gitignore
+
+# Ignore IDE settings
+.vscode/
+.idea/
+
+# Ignore OS metadata
+.DS_Store
+Thumbs.db
+
+# Ignore local secret files (Safety first!)
+*secrets.yaml
+*secrets.yml
+*.pem
+credentials
+
+# Ignore common documentation and temporary files
+LICENSE
+README.md
+*.tmp
+*.bak
