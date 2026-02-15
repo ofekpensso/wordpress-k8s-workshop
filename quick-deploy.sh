@@ -45,7 +45,16 @@ log "Configuring Secrets..."
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
 
-# --- 3. Install Monitoring ---
+# --- 3. Install NGINX Ingress Controller (CRITICAL MISSING STEP) ---
+log "Installing NGINX Ingress Controller..."
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --wait
+
+# --- 4. Install Monitoring ---
 log "Installing Monitoring Stack..."
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -53,7 +62,7 @@ helm repo update
 helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   --create-namespace --namespace monitoring --wait
 
-# --- 4. Deploy Application ---
+# --- 5. Deploy Application ---
 log "Deploying WordPress & MariaDB..."
 # Check if release exists, if so upgrade, else install
 if helm status my-blog &> /dev/null; then
@@ -64,18 +73,18 @@ else
     helm install my-blog ./my-wordpress-chart
 fi
 
-# --- 5. Initialize ECR ---
+# --- 6. Initialize ECR ---
 log "Initializing ECR Token..."
 # Delete old job if exists (allow failure here with || true)
 kubectl delete job initial-token-job --ignore-not-found
 # Create new job
 kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
 
-# --- 6. Wait for Readiness ---
+# --- 7. Wait for Readiness ---
 log "Waiting for WordPress to be ready (Timeout: 120s)..."
 kubectl wait --for=condition=ready pod -l app=wordpress --timeout=120s
 
-# --- 7. Final Output ---
+# --- 8. Final Output ---
 # Get password safely
 GRAFANA_PASS=$(kubectl get secret --namespace monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
 
@@ -88,6 +97,7 @@ echo -e "${GREEN}🎉 DEPLOYMENT SUCCESSFUL!${NC}"
 echo "===================================================="
 echo "🌐 WordPress URL: http://ofek-wordpress.local"
 echo "📊 Grafana URL:   http://localhost:3000"
+echo "👤 Grafana User:  admin"
 echo "🔑 Grafana Pass:  $GRAFANA_PASS"
 echo "===================================================="
 echo "📝 MANDATORY: Add this to your local /etc/hosts:"
@@ -100,8 +110,8 @@ log "Opening Port-Forwards in the background..."
 # Kill old port-forwards to prevent conflicts
 sudo pkill -f "port-forward" || true
 
-# Start new tunnels
+# Start new tunnels (Using sudo for port 80 and specific config)
 sudo kubectl --kubeconfig $HOME/.kube/config port-forward -n ingress-nginx service/ingress-nginx-controller 80:80 --address 0.0.0.0 > /dev/null 2>&1 &
-sudo kubectl --kubeconfig $HOME/.kube/config port-forward --address 0.0.0.0 -n monitoring service/monitoring-grafana 3000:80 > /dev/null 2>&1 &
+sudo kubectl --kubeconfig $HOME/.kube/config port-forward -n monitoring service/monitoring-grafana 3000:80 --address 0.0.0.0 > /dev/null 2>&1 &
 
 echo "✅ Tunnels active. Run 'sudo pkill -f port-forward' to stop."
