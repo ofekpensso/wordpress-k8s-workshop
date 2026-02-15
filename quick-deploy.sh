@@ -45,26 +45,26 @@ log "Configuring Secrets..."
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
 
-# --- 3. Install NGINX Ingress Controller (CRITICAL MISSING STEP) ---
+# --- 3. Install NGINX Ingress Controller ---
 log "Installing NGINX Ingress Controller..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
+# FIX: Added 'controller.service.type=NodePort' to prevent hanging on LoadBalancer creation
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
+  --set controller.service.type=NodePort \
   --wait
 
 # --- 4. Install Monitoring ---
 log "Installing Monitoring Stack..."
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-# Using 'upgrade --install' is safer than 'install' (prevents errors if it exists)
 helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   --create-namespace --namespace monitoring --wait
 
 # --- 5. Deploy Application ---
 log "Deploying WordPress & MariaDB..."
-# Check if release exists, if so upgrade, else install
 if helm status my-blog &> /dev/null; then
     log "Updating existing release..."
     helm upgrade my-blog ./my-wordpress-chart
@@ -75,9 +75,7 @@ fi
 
 # --- 6. Initialize ECR ---
 log "Initializing ECR Token..."
-# Delete old job if exists (allow failure here with || true)
 kubectl delete job initial-token-job --ignore-not-found
-# Create new job
 kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
 
 # --- 7. Wait for Readiness ---
@@ -88,7 +86,7 @@ kubectl wait --for=condition=ready pod -l app=wordpress --timeout=120s
 # Get password safely
 GRAFANA_PASS=$(kubectl get secret --namespace monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode)
 
-# Get Public IP (Try multiple services if one fails)
+# Get Public IP
 SERVER_IP=$(curl -s http://checkip.amazonaws.com || curl -s https://ifconfig.me)
 
 echo ""
@@ -107,10 +105,9 @@ echo ""
 
 log "Opening Port-Forwards in the background..."
 
-# Kill old port-forwards to prevent conflicts
 sudo pkill -f "port-forward" || true
 
-# Start new tunnels (Using sudo for port 80 and specific config)
+# Start new tunnels
 sudo kubectl --kubeconfig $HOME/.kube/config port-forward -n ingress-nginx service/ingress-nginx-controller 80:80 --address 0.0.0.0 > /dev/null 2>&1 &
 sudo kubectl --kubeconfig $HOME/.kube/config port-forward -n monitoring service/monitoring-grafana 3000:80 --address 0.0.0.0 > /dev/null 2>&1 &
 
