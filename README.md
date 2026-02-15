@@ -31,16 +31,6 @@ The project integrates with **AWS ECR** for private images, manages secrets secu
 ---
 
 ## 🚀 Quick Start Guide
-
-### 1️⃣ Clone & Secure Setup
-
-First, generate the necessary Kubernetes Secrets (AWS credentials & Database passwords) without committing them to Git.
-
-```bash
-# Clone the repository
-git clone https://github.com/ofekpenso/wordpress-k8s-workshop.git
-cd wordpress-k8s-workshop
-```
 ## 🏎️ Fast Track Deployment (One-Click)
 
 If you want to deploy the entire stack (Secrets, Monitoring, WordPress, and Access) in one command:
@@ -53,6 +43,15 @@ chmod +x quick-deploy.sh setup-secrets.sh
 ./quick-deploy.sh
 ```
 
+### 1️⃣ Clone & Secure Setup
+
+First, generate the necessary Kubernetes Secrets (AWS credentials & Database passwords) without committing them to Git.
+
+```bash
+# Clone the repository
+git clone https://github.com/ofekpenso/wordpress-k8s-workshop.git
+cd wordpress-k8s-workshop
+```
 ```bash
 # Run the secret generation script
 chmod +x setup-secrets.sh
