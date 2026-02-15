@@ -1,3 +1,4 @@
+# WordPress Deployment Configuration
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,7 +6,7 @@ metadata:
   labels:
     app: wordpress
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount }} # Defined in values.yaml
   selector:
     matchLabels:
       app: wordpress
@@ -40,3 +41,41 @@ spec:
             secretKeyRef:
               name: mysql-secrets
               key: MYSQL_DATABASE
+
+---
+# WordPress Service Configuration
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-service
+  labels:
+    app: wordpress
+spec:
+  selector:
+    app: wordpress
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 80
+  type: {{ .Values.service.type }}
+
+---
+# WordPress Ingress Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "64m"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wordpress-service
+            port:
+              number: {{ .Values.service.port }}
