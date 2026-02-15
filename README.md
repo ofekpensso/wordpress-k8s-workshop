@@ -141,7 +141,7 @@ Import the custom dashboard to visualize Pod health and availability.
 ### Access Grafana:
 
 ```bash
-sudo kubectl --kubeconfig /home/ubuntu/.kube/config port-forward --address 0.0.0.0 -n monitoring service/monitoring-grafana 3000:80
+sudo kubectl --kubeconfig $HOME/.kube/config port-forward --address 0.0.0.0 -n monitoring service/monitoring-grafana 3000:80
 ```
 
 URL:
