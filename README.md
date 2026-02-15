@@ -201,10 +201,6 @@ You must map your domain to your server IP.
 ## 🔎 Find Your Server IP
 
 - **EC2 / Remote Server:** Use Public IP
-- **Minikube:**  
-  ```bash
-  minikube ip
-  ```
 
 ---
 
@@ -346,7 +342,7 @@ wordpress-k8s-workshop/
 
 # 👨‍💻 Author
 
-**Ofek Penso**  
+**Ofek Pensso**  
 DevOps Infrastructure Project  
 
 Built with ❤️ using Kubernetes, Helm, and AWS.
