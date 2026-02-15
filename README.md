@@ -95,11 +95,13 @@ After completion, you can immediately access the system.
 
 # 🅱️ Option B: Manual Deployment (Educational Mode) 📚
 
-Best for understanding the system components and debugging.
+Best for understanding the system components and debugging step-by-step.
 
 ---
 
 ## 1️⃣ Setup Secrets
+
+Run the script to inject AWS credentials and Database passwords into Kubernetes:
 
 ```bash
 ./setup-secrets.sh
@@ -107,7 +109,25 @@ Best for understanding the system components and debugging.
 
 ---
 
-## 2️⃣ Install Monitoring Stack
+## 2️⃣ Install NGINX Ingress Controller
+
+**Critical Step:**  
+We need the Ingress Controller to route traffic from outside the cluster to our WordPress service.
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace
+```
+
+---
+
+## 3️⃣ Install Monitoring Stack
+
+Deploy Prometheus and Grafana for observability.
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -120,7 +140,9 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 
 ---
 
-## 3️⃣ Deploy WordPress Application
+## 4️⃣ Deploy WordPress Application
+
+Deploy the main application using our custom Helm Chart.
 
 ```bash
 helm install my-blog ./my-wordpress-chart
@@ -128,11 +150,47 @@ helm install my-blog ./my-wordpress-chart
 
 ---
 
-## 4️⃣ Initialize ECR Access
+## 5️⃣ Initialize ECR Access
+
+Manually trigger the job to get the first ECR token immediately.
 
 ```bash
 kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
 ```
+
+---
+
+## 6️⃣ Expose Services (Port-Forward)
+
+Since we are on a private server (EC2/Minikube) without a LoadBalancer, we must tunnel the ports manually.
+
+Open **TWO separate terminal windows** and run these commands (keep them running!):
+
+---
+
+### 🖥️ Terminal 1: Expose WordPress (Ingress)
+
+```bash
+sudo kubectl --kubeconfig $HOME/.kube/config port-forward \
+  --address 0.0.0.0 \
+  -n ingress-nginx \
+  service/ingress-nginx-controller 80:80
+```
+
+---
+
+### 📊 Terminal 2: Expose Grafana (Monitoring)
+
+```bash
+sudo kubectl --kubeconfig $HOME/.kube/config port-forward \
+  --address 0.0.0.0 \
+  -n monitoring \
+  service/monitoring-grafana 3000:80
+```
+
+> ⚠️ **Note:**  
+> We use `sudo` for port 80, and specific `--kubeconfig` flags to ensure connection stability.
+
 
 ---
 
