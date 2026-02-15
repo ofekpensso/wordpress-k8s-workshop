@@ -40,7 +40,20 @@ First, generate the necessary Kubernetes Secrets (AWS credentials & Database pas
 # Clone the repository
 git clone https://github.com/ofekpenso/wordpress-k8s-workshop.git
 cd wordpress-k8s-workshop
+```
+## 🏎️ Fast Track Deployment (One-Click)
 
+If you want to deploy the entire stack (Secrets, Monitoring, WordPress, and Access) in one command:
+
+```bash
+# Give execution permissions
+chmod +x quick-deploy.sh setup-secrets.sh
+
+# Run the automated deployment
+./quick-deploy.sh
+```
+
+```bash
 # Run the secret generation script
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
