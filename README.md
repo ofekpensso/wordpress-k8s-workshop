@@ -375,6 +375,22 @@ wordpress-k8s-workshop/
 
 ---
 
+# 📸 Project Screenshots
+
+### 1. Cluster Status (kubectl get all)
+A full view of the cluster showing Pods, Services, StatefulSets, and HPA running successfully.
+![Cluster Status](screenshots/cluster-status.jpg)
+
+### 2. Live WordPress Site
+The deployed application accessible via `http://ofek-wordpress.local`.
+![WordPress Website](screenshots/wordpress-site.jpg)
+
+### 3. Grafana Monitoring
+Real-time dashboard tracking pod availability and restart counts.
+![Grafana Dashboard](screenshots/grafana-dashboard.jpg)
+
+---
+
 # 👨‍💻 Author
 
 **Ofek Penso**  
