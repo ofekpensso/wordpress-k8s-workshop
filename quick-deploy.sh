@@ -45,6 +45,16 @@ log "Configuring Secrets..."
 chmod +x setup-secrets.sh
 ./setup-secrets.sh
 
+# --- 2.5. Enable Metrics Server (Auto-Detect) ---
+log "Checking for Metrics Server..."
+if command -v minikube &> /dev/null; then
+    log "Minikube detected! Enabling 'metrics-server' addon..."
+    minikube addons enable metrics-server
+else
+    log "Not running on Minikube. Assuming Metrics Server is already installed (Standard Cloud Cluster)."
+fi
+
+
 # --- 3. Install NGINX Ingress Controller ---
 log "Installing NGINX Ingress Controller..."
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx

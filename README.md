@@ -285,7 +285,7 @@ If not accessible, verify that the Ingress port-forward is active.
 URL:
 
 ```
-http://<YOUR_SERVER_IP>:3000
+http://ofek-wordpress.local:3000
 ```
 
 Make sure Port 3000 is open in AWS Security Group.
