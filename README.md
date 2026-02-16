@@ -62,11 +62,6 @@ The cluster automatically adjusts the number of WordPress pods based on CPU load
 - **Max Replicas:** 5 (Cost Control)
 - **Trigger:** Scales out when CPU > 70%.
 
-#### Verify HPA
-
-```bash
-kubectl get hpa -w
-```
 
 ---
 
