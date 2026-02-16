@@ -115,6 +115,8 @@ Clone the repository and navigate to the project directory:
 git clone https://github.com/ofekpensso/wordpress-k8s-workshop.git
 cd wordpress-k8s-workshop
 
+---
+
 
 # 🚀 Deployment Options
 
