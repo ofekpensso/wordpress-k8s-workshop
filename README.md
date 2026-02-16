@@ -6,7 +6,6 @@
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 
-> **🔗 GitHub Repository:** https://github.com/ofekpensso/wordpress-k8s-workshop.git
 
 A production-grade infrastructure project deploying a scalable WordPress site on Kubernetes using **Helm Charts**.  
 This project demonstrates a real-world DevOps scenario including private registry integration (ECR), secret management, stateful databases, and full observability.
@@ -107,6 +106,15 @@ aws sts get-caller-identity
 ```
 
 ---
+
+## 📥 Installation
+
+Clone the repository and navigate to the project directory:
+
+```bash
+git clone https://github.com/ofekpensso/wordpress-k8s-workshop.git
+cd wordpress-k8s-workshop
+
 
 # 🚀 Deployment Options
 
