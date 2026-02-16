@@ -247,7 +247,7 @@ If not accessible, verify that the Ingress port-forward is active.
 ## 📊 Grafana Dashboard
 
 ```
-http://localhost:3000
+http://ofek-wordpress.local:3000
 ```
 
 ### Default Credentials
