@@ -6,6 +6,8 @@
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
 ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)
 
+> **🔗 GitHub Repository:** https://github.com/ofekpensso/wordpress-k8s-workshop.git
+
 A production-grade infrastructure project deploying a scalable WordPress site on Kubernetes using **Helm Charts**.  
 This project demonstrates a real-world DevOps scenario including private registry integration (ECR), secret management, stateful databases, and full observability.
 
@@ -34,6 +36,50 @@ This project provisions a **high-availability WordPress environment** inside a K
 - **Persistence:** MySQL runs as a StatefulSet with PersistentVolumeClaims.
 - **Traffic Routing:** NGINX Ingress routes traffic via `ofek-wordpress.local`.
 - **Observability:** Full monitoring stack with Prometheus and Grafana dashboards.
+- **Self-Healing:** Liveness & Readiness probes configured for automatic recovery.
+- **Auto-Scaling:** Horizontal Pod Autoscaler (HPA) manages traffic spikes.
+- **Network Security:** Network Policies restrict access to the database.
+
+---
+
+## 🌟 Production-Grade Features
+
+We have implemented advanced DevOps practices to ensure stability and security:
+
+### 1️⃣ Self-Healing (Probes) 💓
+
+Kubernetes automatically restarts "frozen" pods and stops sending traffic to pods that are still loading.
+
+- **Liveness Probe:** Restarts the pod if `wp-login.php` is unresponsive.
+- **Readiness Probe:** Removes pod from Service if it's not ready to accept traffic.
+
+---
+
+### 2️⃣ Auto-Scaling (HPA) 📈
+
+The cluster automatically adjusts the number of WordPress pods based on CPU load.
+
+- **Min Replicas:** 2 (High Availability)
+- **Max Replicas:** 5 (Cost Control)
+- **Trigger:** Scales out when CPU > 70%.
+
+#### Verify HPA
+
+```bash
+kubectl get hpa -w
+```
+
+---
+
+### 3️⃣ Network Security (Firewall) 🛡️
+
+A Network Policy is configured to allow traffic to MySQL only from WordPress pods.  
+Any other pod (e.g., a malicious pod) trying to access port 3306 will be blocked.
+
+> ⚠️ **Note for Minikube Users:**  
+> Minikube's default CNI does not enforce Network Policies.  
+> To test this feature locally, start Minikube with Calico or Cilium.  
+> In a real cloud environment (e.g., AWS EKS), this policy is enforced automatically.
 
 ---
 
@@ -46,7 +92,13 @@ Before starting, ensure you have:
 - `helm` installed
 - `aws-cli` installed and configured with ECR permissions
 
-Verify:
+### Metrics Server (Required for HPA)
+
+```bash
+minikube addons enable metrics-server
+```
+
+### Verify Installation
 
 ```bash
 kubectl version
@@ -101,8 +153,6 @@ Best for understanding the system components and debugging step-by-step.
 
 ## 1️⃣ Setup Secrets
 
-Run the script to inject AWS credentials and Database passwords into Kubernetes:
-
 ```bash
 ./setup-secrets.sh
 ```
@@ -111,38 +161,34 @@ Run the script to inject AWS credentials and Database passwords into Kubernetes:
 
 ## 2️⃣ Install NGINX Ingress Controller
 
-**Critical Step:**  
-We need the Ingress Controller to route traffic from outside the cluster to our WordPress service.
-
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
 
-helm install ingress-nginx ingress-nginx/ingress-nginx \
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
-  --create-namespace
+  --create-namespace \
+  --set controller.service.type=NodePort \
+  --wait
 ```
 
 ---
 
 ## 3️⃣ Install Monitoring Stack
 
-Deploy Prometheus and Grafana for observability.
-
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-helm install monitoring prometheus-community/kube-prometheus-stack \
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   --create-namespace \
-  --namespace monitoring
+  --namespace monitoring \
+  --wait
 ```
 
 ---
 
 ## 4️⃣ Deploy WordPress Application
-
-Deploy the main application using our custom Helm Chart.
 
 ```bash
 helm install my-blog ./my-wordpress-chart
@@ -151,8 +197,6 @@ helm install my-blog ./my-wordpress-chart
 ---
 
 ## 5️⃣ Initialize ECR Access
-
-Manually trigger the job to get the first ECR token immediately.
 
 ```bash
 kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
@@ -164,9 +208,7 @@ kubectl create job --from=cronjob/ecr-renew-cron initial-token-job
 
 Since we are on a private server (EC2/Minikube) without a LoadBalancer, we must tunnel the ports manually.
 
-Open **TWO separate terminal windows** and run these commands (keep them running!):
-
----
+Open **TWO separate terminal windows** and keep them running:
 
 ### 🖥️ Terminal 1: Expose WordPress (Ingress)
 
@@ -188,9 +230,7 @@ sudo kubectl --kubeconfig $HOME/.kube/config port-forward \
   service/monitoring-grafana 3000:80
 ```
 
-> ⚠️ **Note:**  
-> We use `sudo` for port 80, and specific `--kubeconfig` flags to ensure connection stability.
-
+> ⚠️ We use `sudo` for port 80 and specify `--kubeconfig` for connection stability.
 
 ---
 
@@ -200,7 +240,7 @@ You must map your domain to your server IP.
 
 ## 🔎 Find Your Server IP
 
-- **EC2 / Remote Server:** Use Public IP
+- EC2 / Remote Server: Use Public IP
 
 ---
 
@@ -220,9 +260,7 @@ Run Notepad as Administrator:
 C:\Windows\System32\drivers\etc\hosts
 ```
 
----
-
-## ➕ Add This Line
+### ➕ Add This Line
 
 ```
 <YOUR_SERVER_IP>  ofek-wordpress.local
@@ -231,8 +269,6 @@ C:\Windows\System32\drivers\etc\hosts
 ---
 
 # 💻 Accessing the Application
-
----
 
 ## 🌍 WordPress Website
 
@@ -246,14 +282,21 @@ If not accessible, verify that the Ingress port-forward is active.
 
 ## 📊 Grafana Dashboard
 
+URL:
+
 ```
-http://ofek-wordpress.local:3000
+http://<YOUR_SERVER_IP>:3000
 ```
 
-### Default Credentials
+Make sure Port 3000 is open in AWS Security Group.
 
-- **Username:** `admin`
-- **Password:**
+Alternative: Use SSH tunneling to `localhost:3000`.
+
+---
+
+## 🔐 Default Grafana Credentials
+
+**Username:** `admin`
 
 ### Fast Track
 Displayed automatically at the end of the script.
@@ -267,15 +310,12 @@ kubectl get secret --namespace monitoring monitoring-grafana \
 
 ---
 
-## 📈 Import Custom Dashboard
+# 📈 Import Custom Dashboard
 
 Inside Grafana:
 
-```
-Dashboards → New → Import
-```
-
-Upload:
+- Dashboards → New → Import
+- Upload:
 
 ```
 monitoring/custom-dashboard.json
@@ -284,8 +324,6 @@ monitoring/custom-dashboard.json
 ---
 
 # 🧹 Cleanup & Disaster Recovery
-
----
 
 ## 🛑 Stop Background Port-Forwards
 
@@ -319,7 +357,7 @@ wordpress-k8s-workshop/
 ├── setup-secrets.sh        # 🔐 Secret Injection Script
 │
 ├── my-wordpress-chart/     # 📦 Custom Helm Chart
-│   ├── templates/          # Kubernetes Manifests
+│   ├── templates/          # K8s Manifests (Deploy, SVC, Ingress, HPA, NetPol)
 │   ├── values.yaml         # Configuration Values
 │   └── Chart.yaml
 │
@@ -331,18 +369,9 @@ wordpress-k8s-workshop/
 
 ---
 
-# 🔐 Security Considerations
-
-- No credentials are stored in source control.
-- Secrets are dynamically created inside Kubernetes.
-- ECR token auto-renewal prevents image pull failures.
-- MySQL data persists across pod restarts.
-
----
-
 # 👨‍💻 Author
 
-**Ofek Pensso**  
+**Ofek Penso**  
 DevOps Infrastructure Project  
 
 Built with ❤️ using Kubernetes, Helm, and AWS.
