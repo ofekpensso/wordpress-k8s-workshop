@@ -6,7 +6,9 @@ metadata:
   labels:
     app: wordpress
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       app: wordpress
